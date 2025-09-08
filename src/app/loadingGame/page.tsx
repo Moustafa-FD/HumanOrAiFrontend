@@ -59,6 +59,7 @@ export default function LoadingGame({loading, gameData}: {loading: (value: boole
                     console.log("Game is ready")
                     setLoadingInfo(prev => ["Game Found...", ...prev]);
                     gameReady=false;
+                    gameData.current.roomId = ticketStatus.roomId;
                 }
                await new Promise(resolve => setTimeout(resolve, ticketCheakerInterval));
             }
@@ -68,32 +69,43 @@ export default function LoadingGame({loading, gameData}: {loading: (value: boole
             tickedId = data.ticketId;
             console.log("Current ticket: ", tickedId);
             await ticketChecker();
+            return;
         }else{
             console.log("Game is ready")
             setLoadingInfo(prev => ["Game Found...", ...prev]);
+            gameData.current.roomId = data.roomId;
         }
     }
 
     const connectToChatRoom = async (): Promise<boolean> => {
         setLoadingInfo(prev => ["Attempting to connect to game...", ...prev]);
-        
+
         try{
-            const socket = io(process.env.NEXT_PUBLIC_BACKEND, {
+            const socket = io(process.env.NEXT_PUBLIC_BACKEND2, {
                 reconnectionAttempts: 2, 
                 reconnectionDelay: 1000,
             });
 
             socket.on("connect", () => {
+                console.log("Connected to server");
                 setLoadingInfo(prev => ["final setup...", ...prev]);
-                socket.emit("join room", {roomId: gameData.current.roomId, userId: gameData.current.userId});
-
-                socket.on(`${gameData.current.userId} joined`, () => {
-                    setLoadingInfo(prev => ["Connected ...", ...prev]);
-                    return true;
-                })
             })
 
+            await new Promise((resolve, reject) => {
+                socket.emit(
+                    "join room", 
+                    {roomId: gameData.current.roomId, userId: gameData.current.userId},
+                    (res: {status: string, message: string}) => {
+                        if (res.status ==="Error"){
+                            reject(new Error("Error occured joining room"));
+                        }
+                            
+                        resolve(res);
+                    });
+            })
+            return true;
         }catch(ex){
+            console.log(ex);
         }
 
         return false;
