@@ -1,83 +1,111 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, MutableRefObject } from "react";
 import { AnimatePresence, motion } from 'motion/react';
 import Image from 'next/image';
+import { io } from "socket.io-client";
+import { gameData } from "../_constants/gameData";
 
 
-export default function LoadingGame({loading, setRoomId}: {loading: (value: boolean) => void; setRoomId: (value: string) => void}){
+export default function LoadingGame({loading, gameData}: {loading: (value: boolean) => void; gameData: MutableRefObject<gameData>;}){
 
     const [loadingInfo, setLoadingInfo] = useState<string[]>([]);
+    const [tryAgain, setTryAgain] = useState(false);
     const didInit = useRef(false);
+    const ticketCheakerInterval = 2000; //Ms
 
     let tickedId: string;
-    let roomId;
-    const userId = Math.random().toString(36).substring(2, 10);
+    gameData.current.userId = Math.random().toString(36).substring(2, 10)
 
     useEffect(() => {
 
         if (didInit.current) return;
         didInit.current = true;
 
-
-        
-        matchMaking();
-
-        setTimeout(() => {
-            setLoadingInfo(prev => [ "Searching for game...", ...prev]);
-        }, 0);
-
-        // setTimeout(() => {
-        //     setLoadingInfo(prev => ["Generating the game...", ...prev]);
-        // }, 2000);
-
-        // setTimeout(() => {
-        //     setLoadingInfo(prev => ["Getting things ready...", ...prev]);
-        // }, 4000);
-
-        // setTimeout(() => {
-        //     setLoadingInfo(prev => ["Loading assets...", ...prev]);
-        // }, 6000);
-
-        // setTimeout(() => {
-        //     setLoadingInfo(prev => ["Starting game...", ...prev]);
-        // }, 8000);
-        
-        // setTimeout(() => {
-        //     loading(false);
-        // }, 10000);
-        
+        gameSetup();
+                
     }, []);
 
+    const gameSetup = async() => {
+
+        setLoadingInfo(prev => [ "Searching for game...", ...prev]);        
+
+        await matchMaking();
+        setTimeout(async () => {
+            const gameConnection = await connectToChatRoom();
+
+            if (gameConnection){
+                setTimeout(() => {setLoadingInfo(prev => ["Starting Game", ...prev])}, 1000);
+                setTimeout(() => {loading(false)}, 2000);
+            }else{
+                setLoadingInfo([]);
+                setTryAgain(true);
+            }
+        }, 1000);
+        
+    }
 
 
     const matchMaking = async () => {
-        const url = `${process.env.NEXT_PUBLIC_BACKEND}ticket/${userId}`;
+        const url = `${process.env.NEXT_PUBLIC_BACKEND}ticket/${gameData.current.userId}`;
         const data = await fetch(url).then(data => data.json()).then(data => data.response);
         console.log("First run worked????: ", data)
 
-        if (data.gameReady === false){
-            tickedId = data.ticketId;
-            console.log("Current ticket: ", tickedId);
-           const matchmakingLoop = setInterval(async () => {
+        async function ticketChecker () {
+            const timeout = 60000;
+            let gameReady = true;
+            while (gameReady){
                 const ticketStatus = await fetch(`${process.env.NEXT_PUBLIC_BACKEND}ticketstat/${tickedId}`).then(data => data.json()).then(data => data.response);
                 console.log("Loop is running, this is data: ", ticketStatus);
                 if (ticketStatus.gameReady === true){
                     console.log("Game is ready")
-                    clearInterval(matchmakingLoop);
                     setLoadingInfo(prev => ["Game Found...", ...prev]);
+                    gameReady=false;
                 }
-           }, 2000)
+               await new Promise(resolve => setTimeout(resolve, ticketCheakerInterval));
+            }
+        }
+
+        if (data.gameReady === false){
+            tickedId = data.ticketId;
+            console.log("Current ticket: ", tickedId);
+            await ticketChecker();
+        }else{
+            console.log("Game is ready")
+            setLoadingInfo(prev => ["Game Found...", ...prev]);
         }
     }
 
-    const joinRoom = async () => {
-        const url = `${process.env.NEXT_PUBLIC_BACKEND}ticket/${userId}`;
+    const connectToChatRoom = async (): Promise<boolean> => {
+        setLoadingInfo(prev => ["Attempting to connect to game...", ...prev]);
+        
+        try{
+            const socket = io(process.env.NEXT_PUBLIC_BACKEND, {
+                reconnectionAttempts: 2, 
+                reconnectionDelay: 1000,
+            });
+
+            socket.on("connect", () => {
+                setLoadingInfo(prev => ["final setup...", ...prev]);
+                socket.emit("join room", {roomId: gameData.current.roomId, userId: gameData.current.userId});
+
+                socket.on(`${gameData.current.userId} joined`, () => {
+                    setLoadingInfo(prev => ["Connected ...", ...prev]);
+                    return true;
+                })
+            })
+
+        }catch(ex){
+        }
+
+        return false;
     }
 
     
 
 
     return(
-    <div className="flex flex-col h-screen items-center justify-center"> 
+        <div className="flex flex-col h-screen items-center justify-center"> 
+           {!tryAgain 
+           ? <>
                 <Image
                     src="/loading.gif"
                     width={130}
@@ -102,6 +130,26 @@ export default function LoadingGame({loading, setRoomId}: {loading: (value: bool
                     })}
                     </AnimatePresence>
                 </motion.ul>
-                </div> 
-            )
+           </>: <>
+           
+           <h1 className="text-3xl font:bold pb-8">
+            Error Occured
+           </h1>
+           
+           <button 
+           className="bg-orange-600 hover:bg-orange-400 hover:scale-105 transition duration-250 py-2 px-6 text-2xl font-bold text-black rounded-2xl border shadow flex items-center" 
+           onClick={() => {
+            setTryAgain(false);
+            didInit.current = false
+            gameSetup();
+           }}>
+            Try Again
+            </button>
+           
+           
+           
+           
+           </>}
+        </div> 
+    )
 }
