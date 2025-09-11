@@ -5,7 +5,8 @@ import { gameData } from "../_constants/gameData";
 import { Socket } from "socket.io-client";
 
 
-export default function LoadingGame({loading, gameData, socket}: {loading: (value: boolean) => void; gameData: MutableRefObject<gameData>; socket: Socket}){
+export default function LoadingGame({loading, gameData, socket, inputDisabled}: 
+    {loading: (value: boolean) => void; gameData: MutableRefObject<gameData>; socket: Socket; inputDisabled: (value: boolean) => void}){
 
     const [loadingInfo, setLoadingInfo] = useState<string[]>([]);
     const [tryAgain, setTryAgain] = useState(false);
@@ -33,8 +34,14 @@ export default function LoadingGame({loading, gameData, socket}: {loading: (valu
             const gameConnection = await connectToChatRoom();
 
             if (gameConnection){
-                setTimeout(() => {setLoadingInfo(prev => ["Starting Game", ...prev])}, 1000);
-                setTimeout(() => {loading(false)}, 2000);
+                socket.on(`${gameData.current.roomId} start game`, (data) => {
+                    gameData.current.endAt = data.endAt;
+                    gameData.current.startingUser = socket.id === data.startingSocketId;
+                    gameData.current.offset = Date.now() - data.serverTime;
+                    gameData.current.startingUser && inputDisabled(false);
+                    setTimeout(() => {setLoadingInfo(prev => ["Starting Game", ...prev])}, 1000);
+                    setTimeout(() => {loading(false)}, 2000);
+                });
             }else{
                 setLoadingInfo([]);
                 setTryAgain(true);

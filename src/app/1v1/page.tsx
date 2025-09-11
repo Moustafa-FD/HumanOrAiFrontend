@@ -17,9 +17,10 @@ export default function OneVsOne(){
     
     const [loading, setLoading] = useState(true);
     const [gameChat, setGameChat] = useState<chatMessages[]>([]);
-    const gameData = useRef<gameData>({roomId: "", userId: "", endAt: 0, startAt: 0});
+    const gameData = useRef<gameData>({roomId: "", userId: "", endAt: 0, startingUser: false, offset: 0});
     const [userInput, setUserInput] = useState("");
     const [socket, setSocket] =  useState<Socket| null>(null);
+    const [inputDisabled, setInputDisabled] = useState(true);
 
     
     useEffect(() => {
@@ -34,7 +35,8 @@ export default function OneVsOne(){
     useEffect(() => {
         if (socket){
             socket.on("msg", (data)=> {
-                setGameChat(prev => [...prev, {message: data, isUser: false}])
+                setGameChat(prev => [...prev, {message: data, isUser: false}]);
+                setInputDisabled(false);
             })
         }
 
@@ -53,10 +55,11 @@ export default function OneVsOne(){
     }
 
     const sendMsg = () => {
-        if (userInput !== ""){
+        if (userInput !== "" && !inputDisabled){
             socket?.emit("msg", {roomId: gameData.current.roomId, msg: userInput});
             setGameChat(prev => [...prev, {message: userInput, isUser: true}])
             setUserInput("");
+            setInputDisabled(true);
         } 
     }
 
@@ -67,7 +70,7 @@ export default function OneVsOne(){
          {loading ? 
             !socket ? 
             <h2>Connecting</h2>
-            : <LoadingGame loading={setLoading} gameData={gameData} socket={socket}/>
+            : <LoadingGame loading={setLoading} gameData={gameData} socket={socket} inputDisabled={setInputDisabled}/>
          : 
          <div className="h-screen w-screen gap-10 flex flex-col justify-between">
 
@@ -90,13 +93,14 @@ export default function OneVsOne(){
                     <input type="text" 
                     value={userInput} 
                     onChange={e => setUserInput(e.target.value)} 
-                    className="border-b-1 focus:outline-none px-4 py-2 text-3xl w-1/2" 
+                    className={`border-b-1 ${inputDisabled ? "border-gray-600" : ""} focus:outline-none px-4 py-2 text-3xl w-1/2 focus:scale-105 transition focus:shadow-md focus:shadow-gray-500` }
+                    disabled={inputDisabled}
                     onKeyDown={(e) => {
                         e.key === "Enter" && sendMsg();
                     }}
                     />
 
-                    <Send size={30} onClick={sendMsg} className="self-center"/>
+                    <Send size={30} onClick={sendMsg} color={inputDisabled ? "#787777" : "#FFFFFF"} className="self-center"/>
                 </div>
             </div> 
 
