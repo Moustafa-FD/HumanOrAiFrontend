@@ -3,6 +3,5 @@ export interface gameData {
     userId: string,
     startAt: number,
     endAt: number,
-    serverTime: number;
     offset?: number;
 }

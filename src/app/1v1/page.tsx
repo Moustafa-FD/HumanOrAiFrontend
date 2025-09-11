@@ -4,7 +4,6 @@ import LoadingGame from "../loadingGame/page"
 import { gameData } from "../_constants/gameData";
 import { Send } from 'lucide-react';
 import { io, Socket } from "socket.io-client";
-import { h2 } from "motion/react-client";
 
 
 interface chatMessages{
@@ -18,7 +17,7 @@ export default function OneVsOne(){
     
     const [loading, setLoading] = useState(true);
     const [gameChat, setGameChat] = useState<chatMessages[]>([]);
-    const gameData = useRef<gameData>({roomId: "", userId: "", endAt: 0, startAt: 0, serverTime: 0});
+    const gameData = useRef<gameData>({roomId: "", userId: "", endAt: 0, startAt: 0});
     const [userInput, setUserInput] = useState("");
     const [socket, setSocket] =  useState<Socket| null>(null);
 
@@ -32,6 +31,15 @@ export default function OneVsOne(){
         }
     }, []);
 
+    useEffect(() => {
+        if (socket){
+            socket.on("msg", (data)=> {
+                setGameChat(prev => [...prev, {message: data, isUser: false}])
+            })
+        }
+
+    }, [socket])
+
 
     const socketConnect = () => {
         socket?.disconnect();
@@ -41,6 +49,15 @@ export default function OneVsOne(){
             reconnectionDelay: 1000,
         }));
 
+
+    }
+
+    const sendMsg = () => {
+        if (userInput !== ""){
+            socket?.emit("msg", {roomId: gameData.current.roomId, msg: userInput});
+            setGameChat(prev => [...prev, {message: userInput, isUser: true}])
+            setUserInput("");
+        } 
     }
 
 
@@ -59,9 +76,9 @@ export default function OneVsOne(){
             </header>
 
             
-            <div className="md:mx-40 lg:mx-60 overflow-auto scrollbar-hidden h-8/12 text-xl grid auto-rows-min gap-2">
+            <div className="md:mx-40 lg:mx-60 overflow-auto scrollbar-hidden h-8/12 text-xl grid auto-rows-min gap-5">
                 {gameChat.map((msg, index) => (
-                    <h2 className={msg.isUser ? "bg-zinc-700 px-4 py-3 w-1/2 justify-self-end-safe h-fit rounded-xl": "px-4 py-2 w-1/2 h-fit"} 
+                    <h2 className={msg.isUser ? "bg-zinc-700 px-4 py-3 w-1/2 justify-self-end-safe h-fit rounded-xl": "px-4 py-2 w-1/2 h-fit bg-zinc-800 rounded-xl"} 
                     key={index}>
                         {msg.message}
                     </h2>
@@ -74,13 +91,14 @@ export default function OneVsOne(){
                     value={userInput} 
                     onChange={e => setUserInput(e.target.value)} 
                     className="border-b-1 focus:outline-none px-4 py-2 text-3xl w-1/2" 
+                    onKeyDown={(e) => {
+                        e.key === "Enter" && sendMsg();
+                    }}
                     />
 
-                    <Send size={30} className="self-center"/>
+                    <Send size={30} onClick={sendMsg} className="self-center"/>
                 </div>
-            </div>
-
-                
+            </div> 
 
          </div>
         }</>

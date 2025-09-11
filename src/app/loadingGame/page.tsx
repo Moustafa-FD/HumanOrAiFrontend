@@ -10,7 +10,7 @@ export default function LoadingGame({loading, gameData, socket}: {loading: (valu
     const [loadingInfo, setLoadingInfo] = useState<string[]>([]);
     const [tryAgain, setTryAgain] = useState(false);
     const didInit = useRef(false);
-    const ticketCheakerInterval = 2000; //Ms
+    const ticketCheakerInterval = 500; //Ms
 
     let tickedId: string;
     gameData.current.userId = Math.random().toString(36).substring(2, 10)
@@ -47,14 +47,12 @@ export default function LoadingGame({loading, gameData, socket}: {loading: (valu
     const matchMaking = async () => {
         const url = `${process.env.NEXT_PUBLIC_BACKEND}ticket/${gameData.current.userId}`;
         const data = await fetch(url).then(data => data.json()).then(data => data.response);
-        console.log("First run worked????: ", data)
 
         async function ticketChecker () {
             const timeout = 60000;
             let gameReady = true;
             while (gameReady){
                 const ticketStatus = await fetch(`${process.env.NEXT_PUBLIC_BACKEND}ticketstat/${tickedId}`).then(data => data.json()).then(data => data.response);
-                console.log("Loop is running, this is data: ", ticketStatus);
                 if (ticketStatus.gameReady === true){
                     console.log("Game is ready")
                     setLoadingInfo(prev => ["Game Found...", ...prev]);
