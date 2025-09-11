@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState, MutableRefObject } from "react";
 import { AnimatePresence, motion } from 'motion/react';
 import Image from 'next/image';
-import { io } from "socket.io-client";
 import { gameData } from "../_constants/gameData";
+import { Socket } from "socket.io-client";
 
 
-export default function LoadingGame({loading, gameData}: {loading: (value: boolean) => void; gameData: MutableRefObject<gameData>;}){
+export default function LoadingGame({loading, gameData, socket}: {loading: (value: boolean) => void; gameData: MutableRefObject<gameData>; socket: Socket}){
 
     const [loadingInfo, setLoadingInfo] = useState<string[]>([]);
     const [tryAgain, setTryAgain] = useState(false);
@@ -81,18 +81,14 @@ export default function LoadingGame({loading, gameData}: {loading: (value: boole
         setLoadingInfo(prev => ["Attempting to connect to game...", ...prev]);
 
         try{
-            const socket = io(process.env.NEXT_PUBLIC_BACKEND2, {
-                reconnectionAttempts: 2, 
-                reconnectionDelay: 1000,
-            });
 
-            socket.on("connect", () => {
+            socket?.on("connect", () => {
                 console.log("Connected to server");
                 setLoadingInfo(prev => ["final setup...", ...prev]);
             })
 
             await new Promise((resolve, reject) => {
-                socket.emit(
+                socket?.emit(
                     "join room", 
                     {roomId: gameData.current.roomId, userId: gameData.current.userId},
                     (res: {status: string, message: string}) => {
@@ -157,10 +153,7 @@ export default function LoadingGame({loading, gameData}: {loading: (value: boole
            }}>
             Try Again
             </button>
-           
-           
-           
-           
+
            </>}
         </div> 
     )
