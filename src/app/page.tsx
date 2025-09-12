@@ -11,7 +11,7 @@ export default function Home() {
         <h1 className="text-2xl font-bold text-zinc-400">MO-FD</h1>
       </div>
       <main className="flex flex-col gap-[32px] row-start-2 items-center">
-        <h1 className="text-6xl font:bold ">Human VS AI</h1>
+        <h1 className="text-6xl font:bold ">Human or AI</h1>
         <Link
           href={singlePlayer ? "1v1" : "group"}
           className="bg-orange-600 hover:bg-orange-400 hover:scale-105 transition duration-250 py-3 px-8 text-3xl font-bold text-black rounded-2xl border shadow flex items-center"

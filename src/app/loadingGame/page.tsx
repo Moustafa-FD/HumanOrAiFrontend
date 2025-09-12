@@ -14,7 +14,7 @@ export default function LoadingGame({loading, gameData, socket, inputDisabled}:
     const ticketCheakerInterval = 500; //Ms
 
     let tickedId: string;
-    gameData.current.userId = Math.random().toString(36).substring(2, 10)
+    gameData.current.userId = Math.random().toString(36).substring(2, 10);
 
     useEffect(() => {
 
@@ -61,7 +61,6 @@ export default function LoadingGame({loading, gameData, socket, inputDisabled}:
             while (gameReady){
                 const ticketStatus = await fetch(`${process.env.NEXT_PUBLIC_BACKEND}ticketstat/${tickedId}`).then(data => data.json()).then(data => data.response);
                 if (ticketStatus.gameReady === true){
-                    console.log("Game is ready")
                     setLoadingInfo(prev => ["Game Found...", ...prev]);
                     gameReady=false;
                     gameData.current.roomId = ticketStatus.roomId;
@@ -72,11 +71,9 @@ export default function LoadingGame({loading, gameData, socket, inputDisabled}:
 
         if (data.gameReady === false){
             tickedId = data.ticketId;
-            console.log("Current ticket: ", tickedId);
             await ticketChecker();
             return;
         }else{
-            console.log("Game is ready")
             setLoadingInfo(prev => ["Game Found...", ...prev]);
             gameData.current.roomId = data.roomId;
         }
@@ -88,7 +85,6 @@ export default function LoadingGame({loading, gameData, socket, inputDisabled}:
         try{
 
             socket?.on("connect", () => {
-                console.log("Connected to server");
                 setLoadingInfo(prev => ["final setup...", ...prev]);
             })
 

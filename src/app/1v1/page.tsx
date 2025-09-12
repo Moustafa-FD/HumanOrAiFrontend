@@ -2,8 +2,9 @@
 import { useState, useRef, useEffect } from "react";
 import LoadingGame from "../loadingGame/page"
 import { gameData } from "../_constants/gameData";
-import { Send } from 'lucide-react';
+import { Send, Vote } from 'lucide-react';
 import { io, Socket } from "socket.io-client";
+import { pre } from "motion/react-client";
 
 
 interface chatMessages{
@@ -11,16 +12,22 @@ interface chatMessages{
     isUser: boolean
 }
 
+interface endGameUsersInfo{
+    socketId: string,
+    isAi: boolean
+}
+
 
 export default function OneVsOne(){
     
     
-    const [loading, setLoading] = useState(true);
     const [gameChat, setGameChat] = useState<chatMessages[]>([]);
     const gameData = useRef<gameData>({roomId: "", userId: "", endAt: 0, startingUser: false, offset: 0});
     const [userInput, setUserInput] = useState("");
     const [socket, setSocket] =  useState<Socket| null>(null);
     const [inputDisabled, setInputDisabled] = useState(true);
+    const [pageViews, setPageViews] = useState({loading: true, vote: false, voteResult: false});
+    const [gameResult, setgameResult] = useState({opponent: "", voteCorrect: false});
 
     
     useEffect(() => {
@@ -50,8 +57,18 @@ export default function OneVsOne(){
             reconnectionAttempts: 2, 
             reconnectionDelay: 1000,
         }));
-
-
+    }
+    
+    const setLoadingState = (value: boolean) => {
+        setPageViews(prev => ({...prev, loading: value}))
+        socket?.on(`${gameData.current.roomId} end game`, (data) => {
+            data.map((user: endGameUsersInfo) => {
+                if (socket.id !== user.socketId)
+                    gameData.current.opponentIsAi = user.isAi;
+            })
+            setInputDisabled(true);
+            setPageViews(prev => ({...prev, vote: true}))
+        });
     }
 
     const sendMsg = () => {
@@ -63,47 +80,86 @@ export default function OneVsOne(){
         } 
     }
 
+    const voteTrigger = (value: string) => {
+
+        setPageViews(prev => ({...prev, voteResult: true}))
+
+        if(gameData.current.opponentIsAi === false)
+            setgameResult(prev => ({...prev, opponent: "Human"}));
+        else
+            setgameResult(prev => ({...prev, opponent: "AI"}));
+        
+
+        if( value === "AI" && gameData.current.opponentIsAi)
+            setgameResult(prev => ({...prev, voteCorrect: true}))
+        else if( value === "Human" && !gameData.current.opponentIsAi)
+            setgameResult(prev => ({...prev, voteCorrect: true}))
+    }
 
 
     return(
         <>
-         {loading ? 
+         {pageViews.loading ? 
             !socket ? 
             <h2>Connecting</h2>
-            : <LoadingGame loading={setLoading} gameData={gameData} socket={socket} inputDisabled={setInputDisabled}/>
+            : <LoadingGame loading={setLoadingState} gameData={gameData} socket={socket} inputDisabled={setInputDisabled}/>
          : 
-         <div className="h-screen w-screen gap-10 flex flex-col justify-between">
+         <div className="flex justify-items-center flex-wrap flex-gap-25">
+            <div className="h-screen w-full gap-10 flex flex-col justify-between">
 
-            <header className="w-full h-1/12 bg-zinc-900">
-                <h1>header place holder</h1>
-            </header>
+                <header className="w-full h-1/12 bg-zinc-900">
+                    <h1>header place holder</h1>
+                </header>
 
-            
-            <div className="md:mx-40 lg:mx-60 overflow-auto scrollbar-hidden h-8/12 text-xl grid auto-rows-min gap-5">
-                {gameChat.map((msg, index) => (
-                    <h2 className={msg.isUser ? "bg-zinc-700 px-4 py-3 w-1/2 justify-self-end-safe h-fit rounded-xl": "px-4 py-2 w-1/2 h-fit bg-zinc-800 rounded-xl"} 
-                    key={index}>
-                        {msg.message}
-                    </h2>
-                ))}
+                
+                <div className="md:mx-40 lg:mx-60 overflow-auto scrollbar-hidden h-8/12 text-xl grid auto-rows-min gap-5">
+                    {gameChat.map((msg, index) => (
+                        <h2 className={msg.isUser ? "bg-zinc-700 px-4 py-3 w-1/2 justify-self-end-safe h-fit rounded-xl": "px-4 py-2 w-1/2 h-fit bg-zinc-800 rounded-xl"} 
+                        key={index}>
+                            {msg.message}
+                        </h2>
+                    ))}
+                </div>
+
+                <div className="mx-40 mb-10 h-1/12">
+                    <div className="flex  justify-end-safe gap-5">
+                        <input type="text" 
+                        value={userInput} 
+                        onChange={e => setUserInput(e.target.value)} 
+                        className={`border-b-1 ${inputDisabled ? "border-gray-600" : ""} focus:outline-none px-4 py-2 text-3xl w-1/2 focus:scale-105 transition focus:shadow-md focus:shadow-gray-500` }
+                        disabled={inputDisabled}
+                        onKeyDown={(e) => {
+                            e.key === "Enter" && sendMsg();
+                        }}
+                        />
+
+                        <Send size={30} onClick={sendMsg} color={inputDisabled ? "#787777" : "#FFFFFF"} className="self-center"/>
+                    </div>
+                </div> 
             </div>
 
-            <div className="mx-40 mb-10 h-1/12">
-                <div className="flex  justify-end-safe gap-5">
-                    <input type="text" 
-                    value={userInput} 
-                    onChange={e => setUserInput(e.target.value)} 
-                    className={`border-b-1 ${inputDisabled ? "border-gray-600" : ""} focus:outline-none px-4 py-2 text-3xl w-1/2 focus:scale-105 transition focus:shadow-md focus:shadow-gray-500` }
-                    disabled={inputDisabled}
-                    onKeyDown={(e) => {
-                        e.key === "Enter" && sendMsg();
-                    }}
-                    />
+            {pageViews.vote && (
 
-                    <Send size={30} onClick={sendMsg} color={inputDisabled ? "#787777" : "#FFFFFF"} className="self-center"/>
+             
+
+                pageViews.voteResult ? 
+                    <div className={`flex flex-col items-center w-full pt-15 pb-10 ${gameResult.voteCorrect && "celebration"}`}>
+                        <h1 className="text-4xl font-bold">You where playing against</h1>
+                        <h1 className="text-5xl text-orange-600 pb-20 pt-10 font-semibold">{gameResult.opponent}</h1>
+
+                        <button className="bg-zinc-600 px-10 py-4 text-3xl rounded-md w-3/16 hover:scale-110 hover:bg-zinc-500 transition duration-300">Play Again</button>
+                    </div>
+                :
+                <div className="flex flex-col items-center w-full pt-15 pb-10">
+                    <h1 className="text-4xl font-bold">Human or AI?</h1>
+
+                    <div className="flex flex-row w-full justify-center gap-15 py-10">
+                        <button onClick={() => voteTrigger("Human")} className="bg-zinc-600 px-10 py-4 text-3xl rounded-md w-3/16 hover:scale-110 hover:bg-zinc-500 transition duration-300">Human</button>
+                        <button onClick={() => voteTrigger("AI")} className="bg-orange-700 px-10 py-4 text-3xl rounded-md w-3/16 hover:scale-110 hover:bg-orange-600 transition duration-300">AI</button>
+                    </div>
                 </div>
-            </div> 
-
+            )
+            }
          </div>
         }</>
     )

@@ -4,4 +4,5 @@ export interface gameData {
     endAt: number,
     startingUser: boolean,
     offset?: number;
+    opponentIsAi?: boolean
 }
