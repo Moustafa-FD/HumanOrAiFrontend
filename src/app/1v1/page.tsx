@@ -2,9 +2,10 @@
 import { useState, useRef, useEffect } from "react";
 import LoadingGame from "../loadingGame/page"
 import { gameData } from "../_constants/gameData";
-import { Send, Vote } from 'lucide-react';
+import { Send } from 'lucide-react';
 import { io, Socket } from "socket.io-client";
-import { pre } from "motion/react-client";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 
 interface chatMessages{
@@ -28,6 +29,9 @@ export default function OneVsOne(){
     const [inputDisabled, setInputDisabled] = useState(true);
     const [pageViews, setPageViews] = useState({loading: true, vote: false, voteResult: false});
     const [gameResult, setgameResult] = useState({opponent: "", voteCorrect: false});
+    const router = useRouter();
+    const chatScrollRef = useRef<HTMLDivElement>(null);
+    const pageScrollRef = useRef<HTMLDivElement>(null);
 
     
     useEffect(() => {
@@ -42,12 +46,20 @@ export default function OneVsOne(){
     useEffect(() => {
         if (socket){
             socket.on("msg", (data)=> {
-                setGameChat(prev => [...prev, {message: data, isUser: false}]);
-                setInputDisabled(false);
+                if (pageViews.vote === false){
+                    setGameChat(prev => [...prev, {message: data, isUser: false}]);
+                    setInputDisabled(false);
+                }
             })
+            pageScrollRef.current?.scrollIntoView({ behavior: "smooth" });
+            return(() => {socket.off("msg")})
         }
+    }, [socket, pageViews.vote])
+    
 
-    }, [socket])
+    useEffect(() => {
+            chatScrollRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [gameChat]); 
 
 
     const socketConnect = () => {
@@ -104,21 +116,23 @@ export default function OneVsOne(){
             <h2>Connecting</h2>
             : <LoadingGame loading={setLoadingState} gameData={gameData} socket={socket} inputDisabled={setInputDisabled}/>
          : 
-         <div className="flex justify-items-center flex-wrap flex-gap-25">
+         <div className="flex justify-items-center flex-wrap flex-gap-25 scrollbar-hidden">
             <div className="h-screen w-full gap-10 flex flex-col justify-between">
 
-                <header className="w-full h-1/12 bg-zinc-900">
-                    <h1>header place holder</h1>
+                <header className="w-full h-1/12 bg-zinc-900 flex flex-row justify-between items-center">
+                    <Link href={"/"} className="text-2xl font-bold text-zinc-400 pl-10 ">MO-FD</Link>
+                    <h1 className="pr-20 text-xl">Human or AI</h1>
                 </header>
 
                 
-                <div className="md:mx-40 lg:mx-60 overflow-auto scrollbar-hidden h-8/12 text-xl grid auto-rows-min gap-5">
+                <div className="md:mx-40 lg:mx-60 scrollbar-hidden overflow-y-auto h-9/12 text-xl grid auto-rows-min gap-5">
                     {gameChat.map((msg, index) => (
                         <h2 className={msg.isUser ? "bg-zinc-700 px-4 py-3 w-1/2 justify-self-end-safe h-fit rounded-xl": "px-4 py-2 w-1/2 h-fit bg-zinc-800 rounded-xl"} 
                         key={index}>
                             {msg.message}
                         </h2>
                     ))}
+                    <div ref={chatScrollRef}/>
                 </div>
 
                 <div className="mx-40 mb-10 h-1/12">
@@ -147,7 +161,7 @@ export default function OneVsOne(){
                         <h1 className="text-4xl font-bold">You where playing against</h1>
                         <h1 className="text-5xl text-orange-600 pb-20 pt-10 font-semibold">{gameResult.opponent}</h1>
 
-                        <button className="bg-zinc-600 px-10 py-4 text-3xl rounded-md w-3/16 hover:scale-110 hover:bg-zinc-500 transition duration-300">Play Again</button>
+                        <button onClick={() => router.refresh()} className="bg-zinc-600 px-10 py-4 text-3xl rounded-md w-3/16 hover:scale-110 hover:bg-zinc-500 transition duration-300">Play Again</button>
                     </div>
                 :
                 <div className="flex flex-col items-center w-full pt-15 pb-10">
@@ -157,6 +171,7 @@ export default function OneVsOne(){
                         <button onClick={() => voteTrigger("Human")} className="bg-zinc-600 px-10 py-4 text-3xl rounded-md w-3/16 hover:scale-110 hover:bg-zinc-500 transition duration-300">Human</button>
                         <button onClick={() => voteTrigger("AI")} className="bg-orange-700 px-10 py-4 text-3xl rounded-md w-3/16 hover:scale-110 hover:bg-orange-600 transition duration-300">AI</button>
                     </div>
+                    <div ref={pageScrollRef}/>
                 </div>
             )
             }
