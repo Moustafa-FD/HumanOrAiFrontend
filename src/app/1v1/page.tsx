@@ -4,8 +4,8 @@ import LoadingGame from "../loadingGame/page"
 import { gameData } from "../_constants/gameData";
 import { Send } from 'lucide-react';
 import { io, Socket } from "socket.io-client";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { ProgressBar } from "../components/progressBar";
 
 
 interface chatMessages{
@@ -29,7 +29,7 @@ export default function OneVsOne(){
     const [inputDisabled, setInputDisabled] = useState(true);
     const [pageViews, setPageViews] = useState({loading: true, vote: false, voteResult: false});
     const [gameResult, setgameResult] = useState({opponent: "", voteCorrect: false});
-    const router = useRouter();
+    const [childSetupInstance, setChildSetupInstance] = useState(1);
     const chatScrollRef = useRef<HTMLDivElement>(null);
     const pageScrollRef = useRef<HTMLDivElement>(null);
 
@@ -108,20 +108,33 @@ export default function OneVsOne(){
             setgameResult(prev => ({...prev, voteCorrect: true}))
     }
 
+    const playAgainSequence = () => {
+        setGameChat([]);
+        console.log("Did this run??");
+        gameData.current = ({roomId: "", userId: "", endAt: 0, startingUser: false, offset: 0});
+        setUserInput("");
+        setPageViews({loading: true, vote: false, voteResult: false});
+        setgameResult({opponent: "", voteCorrect: false});
+        setChildSetupInstance(prev => prev++);
+    }
+
 
     return(
         <>
          {pageViews.loading ? 
             !socket ? 
             <h2>Connecting</h2>
-            : <LoadingGame loading={setLoadingState} gameData={gameData} socket={socket} inputDisabled={setInputDisabled}/>
+            : <LoadingGame key={childSetupInstance} loading={setLoadingState} gameData={gameData} socket={socket} inputDisabled={setInputDisabled}/>
          : 
          <div className="flex justify-items-center flex-wrap flex-gap-25 scrollbar-hidden">
             <div className="h-screen w-full gap-10 flex flex-col justify-between">
 
-                <header className="w-full h-1/12 bg-zinc-900 flex flex-row justify-between items-center">
-                    <Link href={"/"} className="text-2xl font-bold text-zinc-400 pl-10 ">MO-FD</Link>
-                    <h1 className="pr-20 text-xl">Human or AI</h1>
+                <header className="w-full h-1/12 bg-zinc-900 flex flex-col justify-between">
+                    <div className="flex flex-row justify-between items-center text-center h-full">
+                        <Link href={"/"} className="text-2xl font-bold text-zinc-400 pl-10 ">MO-FD</Link>
+                        <h1 className="pr-20 text-xl">Human or AI</h1>
+                    </div>
+                    <ProgressBar durationMs={2 * 60000} runId={1}/>
                 </header>
 
                 
@@ -161,7 +174,7 @@ export default function OneVsOne(){
                         <h1 className="text-4xl font-bold">You where playing against</h1>
                         <h1 className="text-5xl text-orange-600 pb-20 pt-10 font-semibold">{gameResult.opponent}</h1>
 
-                        <button onClick={() => router.refresh()} className="bg-zinc-600 px-10 py-4 text-3xl rounded-md w-3/16 hover:scale-110 hover:bg-zinc-500 transition duration-300">Play Again</button>
+                        <button onClick={() => playAgainSequence()} className="bg-zinc-600 px-10 py-4 text-3xl rounded-md w-3/16 hover:scale-110 hover:bg-zinc-500 transition duration-300">Play Again</button>
                     </div>
                 :
                 <div className="flex flex-col items-center w-full pt-15 pb-10">
