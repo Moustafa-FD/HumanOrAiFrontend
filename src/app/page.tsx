@@ -13,11 +13,14 @@ export default function Home() {
       <main className="flex flex-col gap-[32px] row-start-2 items-center">
         <h1 className="text-6xl font:bold ">Human or AI</h1>
         <Link
-          href={singlePlayer ? "1v1" : "group"}
-          className="bg-orange-600 hover:bg-orange-400 hover:scale-105 transition duration-250 py-3 px-8 text-3xl font-bold text-black rounded-2xl border shadow flex items-center"
+          href={singlePlayer ? "1v1" : "/"}
+          className={`${singlePlayer ? "bg-orange-600 hover:bg-orange-400" : "bg-zinc-500 hover:bg-zinc-600"}  hover:scale-105 transition duration-250 py-3 px-8 text-3xl font-bold text-black rounded-2xl border shadow flex items-center`}
         >
           Start
         </Link>
+        <h2 className={`h-1 transition-opacity duration-1000 ease-out ${!singlePlayer ? "opacity-100" : "opacity-0"}`}>
+          {!singlePlayer ? "Coming Soon!" : ""}
+        </h2>
       </main>
       <footer className="row-start-3 flex items-center flex-col gap-8">
         <h1 className="text-3xl font-semibold">Game Mode</h1>
@@ -25,8 +28,8 @@ export default function Home() {
           <div
             className={
               singlePlayer
-                ? "bg-orange-600 rounded-2xl py-1 px-4 transition duration-300 hover:scale-105"
-                : "bg-white text-gray-700 hover:bg-orange-400 rounded-2xl py-1 px-4 transition duration-300 hover:scale-105"
+                ? "bg-orange-600 rounded-2xl py-1 px-4 transition duration-300 hover:scale-105 cursor-pointer"
+                : "bg-white text-gray-700 hover:bg-orange-400 rounded-2xl py-1 px-4 transition duration-300 hover:scale-105 cursor-pointer"
             }
             onClick={() => setSinglePlayer(true)}
           >
@@ -35,8 +38,8 @@ export default function Home() {
           <div
             className={
               !singlePlayer
-                ? "bg-orange-600 rounded-2xl py-1 px-4 transition duration-300 hover:scale-105"
-                : "bg-zinc-400 text-gray-700 hover:bg-orange-400 rounded-2xl py-1 px-4 transition duration-300 hover:scale-105"
+                ? "bg-orange-600 rounded-2xl py-1 px-4 transition duration-300 hover:scale-105 cursor-pointer"
+                : "bg-zinc-400 text-gray-700 hover:bg-orange-400 rounded-2xl py-1 px-4 transition duration-300 hover:scale-105 cursor-pointer"
             }
             onClick={() => setSinglePlayer(false)}
           >

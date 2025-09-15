@@ -6,6 +6,7 @@ import { Send } from 'lucide-react';
 import { io, Socket } from "socket.io-client";
 import Link from "next/link";
 import { ProgressBar } from "../components/progressBar";
+import Image from 'next/image';
 
 
 interface chatMessages{
@@ -27,7 +28,7 @@ export default function OneVsOne(){
     const [userInput, setUserInput] = useState("");
     const [socket, setSocket] =  useState<Socket| null>(null);
     const [inputDisabled, setInputDisabled] = useState(true);
-    const [pageViews, setPageViews] = useState({loading: true, vote: false, voteResult: false});
+    const [pageViews, setPageViews] = useState({loading: true, vote: false, voteResult: false, typing: false});
     const [gameResult, setgameResult] = useState({opponent: "", voteCorrect: false});
     const [childSetupInstance, setChildSetupInstance] = useState(1);
     const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -46,13 +47,18 @@ export default function OneVsOne(){
     useEffect(() => {
         if (socket){
             socket.on("msg", (data)=> {
+                setPageViews(prev => ({...prev, typing: false}))
                 if (pageViews.vote === false){
                     setGameChat(prev => [...prev, {message: data, isUser: false}]);
                     setInputDisabled(false);
                 }
             })
+            socket.on("typing", () => {setPageViews(prev => ({...prev, typing: true})) })
+            socket.on("stop typing", () => {
+                setPageViews(prev => ({...prev, typing: false}))
+            })
             pageScrollRef.current?.scrollIntoView({ behavior: "smooth" });
-            return(() => {socket.off("msg")})
+            return(() => {socket.off("msg").off("typing").off("stop typing")})
         }
     }, [socket, pageViews.vote])
     
@@ -83,6 +89,19 @@ export default function OneVsOne(){
         });
     }
 
+    let stopTypingTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const inputOnChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setUserInput(e.target.value);
+        userInput !== "" && socket?.emit("typing", gameData.current.roomId);
+
+        if (stopTypingTimer) clearTimeout(stopTypingTimer)
+        
+        stopTypingTimer = setTimeout(() => {
+            socket?.emit("stop typing", gameData.current.roomId);
+        }, 2000)
+    }
+
     const sendMsg = () => {
         if (userInput !== "" && !inputDisabled){
             socket?.emit("msg", {roomId: gameData.current.roomId, msg: userInput});
@@ -110,10 +129,9 @@ export default function OneVsOne(){
 
     const playAgainSequence = () => {
         setGameChat([]);
-        console.log("Did this run??");
         gameData.current = ({roomId: "", userId: "", endAt: 0, startingUser: false, offset: 0});
         setUserInput("");
-        setPageViews({loading: true, vote: false, voteResult: false});
+        setPageViews({loading: true, vote: false, voteResult: false, typing: false});
         setgameResult({opponent: "", voteCorrect: false});
         setChildSetupInstance(prev => prev++);
     }
@@ -145,6 +163,15 @@ export default function OneVsOne(){
                             {msg.message}
                         </h2>
                     ))}
+                    {pageViews.typing &&
+                        <Image
+                            src="/typingIndicator.gif"
+                            width={500}
+                            height={500}
+                            className="bg-zinc-800 rounded-xl h-12 w-1/8 object-contain" 
+                            alt="Picture of the author"
+                        />                        
+                    }
                     <div ref={chatScrollRef}/>
                 </div>
 
@@ -152,7 +179,7 @@ export default function OneVsOne(){
                     <div className="flex  justify-end-safe gap-5">
                         <input type="text" 
                         value={userInput} 
-                        onChange={e => setUserInput(e.target.value)} 
+                        onChange={e => inputOnChange(e)} 
                         className={`border-b-1 ${inputDisabled ? "border-gray-600" : ""} focus:outline-none px-4 py-2 text-3xl w-1/2 focus:scale-105 transition focus:shadow-md focus:shadow-gray-500` }
                         disabled={inputDisabled}
                         onKeyDown={(e) => {
